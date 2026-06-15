@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+.env.*
+
+# Model binaries (use registry/ for metadata only)
+*.pkl
+*.joblib
+*.h5
+*.onnx
+
+# Data directories (generated at runtime)
+data/raw/
+models/
+
+# Keep the registry metadata (JSON only, no binaries)
+!registry/
+!registry/**
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Testing / coverage
+.coverage
+.pytest_cache/
+htmlcov/
+coverage.xml
+*.coveragerc
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Distribution
+MANIFEST.in

@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>drift-watch | ML Monitoring Dashboard</title>
+  <style>
+    /* ── Reset & Variables ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0b0f;
+      --surface:   #111318;
+      --surface2:  #16191f;
+      --surface3:  #1c2028;
+      --border:    #1f2430;
+      --border2:   #252c38;
+      --text:      #e2e8f0;
+      --muted:     #5c6880;
+      --muted2:    #7a8499;
+      --accent:    #8a6fff;
+      --accent2:   #a78bfa;
+      --accent3:   #c4b5fd;
+      --green:     #22c55e;
+      --green2:    #16a34a;
+      --yellow:    #f59e0b;
+      --red:       #ef4444;
+      --red2:      #dc2626;
+      --cyan:      #06b6d4;
+      --blue:      #3b82f6;
+    }
+
+    html, body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Scrollbar ─────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    /* ── Layout ────────────────────────────────────────────────────────── */
+    .shell {
+      display: grid;
+      grid-template-rows: 60px 1fr;
+      min-height: 100vh;
+    }
+
+    /* ── Header ────────────────────────────────────────────────────────── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(10, 11, 15, 0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      text-decoration: none;
+    }
+    .logo-icon {
+      width: 30px; height: 30px;
+      background: linear-gradient(135deg, var(--accent) 0%, #6d28d9 100%);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+      box-shadow: 0 0 16px rgba(138, 111, 255, 0.3);
+    }
+    .logo-text {
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    .logo-sub {
+      font-size: 0.7rem;
+      color: var(--muted);
+      font-weight: 400;
+      letter-spacing: 0;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+    .live-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.72rem;
+      color: var(--muted2);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 0.25rem 0.65rem;
+      border-radius: 20px;
+    }
+    .live-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    .nav-link {
+      font-size: 0.78rem;
+      color: var(--muted2);
+      text-decoration: none;
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .nav-link:hover {
+      color: var(--text);
+      background: var(--surface2);
+    }
+
+    /* ── Main content ──────────────────────────────────────────────────── */
+    main {
+      padding: 1.75rem 1.5rem 3rem;
+      max-width: 1300px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* ── Page header ───────────────────────────────────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .page-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text);
+    }
+    .page-subtitle {
+      font-size: 0.82rem;
+      color: var(--muted2);
+      margin-top: 0.2rem;
+    }
+    .refresh-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--muted2);
+      font-size: 0.78rem;
+      padding: 0.45rem 0.9rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .refresh-btn:hover {
+      color: var(--text);
+      border-color: var(--accent);
+    }
+
+    /* ── KPI cards ─────────────────────────────────────────────────────── */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.1rem 1.25rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .kpi-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .kpi-card.accent::after  { background: linear-gradient(90deg, var(--accent), transparent); }
+    .kpi-card.green::after   { background: linear-gradient(90deg, var(--green), transparent); }
+    .kpi-card.red::after     { background: linear-gradient(90deg, var(--red), transparent); }
+    .kpi-card.cyan::after    { background: linear-gradient(90deg, var(--cyan), transparent); }
+    .kpi-card.yellow::after  { background: linear-gradient(90deg, var(--yellow), transparent); }
+    .kpi-card:hover { border-color: var(--border2); }
+
+    .kpi-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--muted);
+      margin-bottom: 0.6rem;
+      font-weight: 600;
+    }
+    .kpi-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+    .kpi-sub {
+      font-size: 0.72rem;
+      color: var(--muted2);
+      margin-top: 0.35rem;
+    }
+    .kpi-icon {
+      position: absolute;
+      top: 1rem; right: 1rem;
+      font-size: 1.4rem;
+      opacity: 0.35;
+    }
+
+    /* ── Section panels ────────────────────────────────────────────────── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .panel-head {
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      padding: 0.85rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .panel-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .panel-hint {
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    /* ── Tables ────────────────────────────────────────────────────────── */
+    .tbl-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    thead tr {
+      background: rgba(255,255,255,0.015);
+    }
+    th {
+      padding: 0.65rem 1rem;
+      text-align: left;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    td {
+      padding: 0.7rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      font-size: 0.82rem;
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .mono { font-family: 'Fira Code', 'Cascadia Code', 'SF Mono', Consolas, monospace; }
+    .dim  { color: var(--muted2); }
+    .g    { color: var(--green); }
+    .r    { color: var(--red); }
+    .y    { color: var(--yellow); }
+    .a    { color: var(--accent2); }
+    .c    { color: var(--cyan); }
+    .fw6  { font-weight: 600; }
+
+    .empty-row td {
+      text-align: center;
+      color: var(--muted);
+      padding: 2rem;
+      font-style: italic;
+      font-size: 0.8rem;
+    }
+
+    /* ── PSI bar ───────────────────────────────────────────────────────── */
+    .psi-cell {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      min-width: 140px;
+    }
+    .psi-track {
+      flex: 1;
+      height: 5px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .psi-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+    .psi-val {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.78rem;
+      min-width: 46px;
+      text-align: right;
+    }
+
+    /* ── Status badge ──────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.18rem 0.55rem;
+      border-radius: 99px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+    .badge.stable  { background: rgba(34,197,94,0.1);  color: var(--green);  border: 1px solid rgba(34,197,94,0.2); }
+    .badge.warning { background: rgba(245,158,11,0.1); color: var(--yellow); border: 1px solid rgba(245,158,11,0.2); }
+    .badge.drift   { background: rgba(239,68,68,0.1);  color: var(--red);    border: 1px solid rgba(239,68,68,0.2); }
+    .badge.none    { background: rgba(92,104,128,0.1); color: var(--muted2); border: 1px solid rgba(92,104,128,0.2); }
+
+    .version-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.1rem 0.45rem;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      background: rgba(138,111,255,0.12);
+      color: var(--accent2);
+      border: 1px solid rgba(138,111,255,0.2);
+      font-family: 'Fira Code', monospace;
+    }
+    .latest-tag {
+      display: inline-flex;
+      align-items: center;
+      margin-left: 0.4rem;
+      padding: 0.08rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      background: rgba(34,197,94,0.1);
+      color: var(--green);
+      border: 1px solid rgba(34,197,94,0.2);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── PSI Gauge ─────────────────────────────────────────────────────── */
+    .gauge-section {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 0;
+    }
+    @media (max-width: 700px) {
+      .gauge-section { grid-template-columns: 1fr; }
+    }
+
+    .gauge-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      border-right: 1px solid var(--border);
+      gap: 0.75rem;
+    }
+    .gauge-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .gauge-svg { overflow: visible; }
+    .gauge-value-text {
+      font-size: 0.95rem;
+      font-weight: 700;
+      font-family: 'Fira Code', monospace;
+    }
+    .gauge-status-text {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+
+    .feature-bars {
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+    .feature-bar-row {
+      display: grid;
+      grid-template-columns: 110px 1fr 60px 70px;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .feature-bar-name {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.78rem;
+      color: var(--muted2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .feature-bar-track {
+      height: 6px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .feature-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .feature-bar-psi {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.75rem;
+      color: var(--muted2);
+      text-align: right;
+    }
+
+    /* ── Simulation Controls ───────────────────────────────────────────── */
+    .sim-body {
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .sim-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1.1rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: #7c5de8; }
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border2);
+      color: var(--muted2);
+    }
+    .btn-outline:hover { border-color: var(--accent); color: var(--text); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .sim-input-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    label { font-size: 0.78rem; color: var(--muted2); }
+    input[type="number"] {
+      width: 65px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      padding: 0.3rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      outline: none;
+    }
+    input[type="number"]:focus { border-color: var(--accent); }
+
+    /* Simulation output log */
+    .sim-log {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-family: 'Fira Code', Consolas, monospace;
+      font-size: 0.78rem;
+      color: var(--muted2);
+      max-height: 200px;
+      overflow-y: auto;
+      display: none;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .sim-log.visible { display: flex; }
+    .log-line { line-height: 1.5; }
+    .log-line.drift  { color: var(--red); }
+    .log-line.stable { color: var(--green); }
+    .log-line.info   { color: var(--muted2); }
+    .log-line.done   { color: var(--accent2); font-weight: 600; }
+
+    /* ── API reference ─────────────────────────────────────────────────── */
+    .api-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 0.6rem;
+      padding: 1rem 1.25rem;
+    }
+    .api-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.65rem;
+      padding: 0.75rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      transition: border-color 0.15s;
+      cursor: default;
+    }
+    .api-item:hover { border-color: var(--border2); }
+    .method {
+      padding: 0.18rem 0.45rem;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      font-family: 'Fira Code', monospace;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .method.get  { background: rgba(34,197,94,0.12);  color: #4ade80; }
+    .method.post { background: rgba(138,111,255,0.12); color: var(--accent2); }
+    .api-path { font-family: 'Fira Code', monospace; font-size: 0.8rem; font-weight: 600; }
+    .api-desc { font-size: 0.73rem; color: var(--muted2); margin-top: 0.15rem; }
+
+    /* ── Footer ────────────────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 1.5rem;
+      color: var(--muted);
+      font-size: 0.72rem;
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--accent2); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── Spinner ───────────────────────────────────────────────────────── */
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(138,111,255,0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <header>
+    <a href="/" class="logo">
+      <div class="logo-icon">&#128300;</div>
+      <div>
+        <div class="logo-text">drift-watch</div>
+        <div class="logo-sub">MLOps Monitoring</div>
+      </div>
+    </a>
+    <div class="header-right">
+      <div class="live-pill">
+        <div class="live-dot"></div>
+        <span>Auto-refresh 30s</span>
+      </div>
+      <a href="/docs" class="nav-link">API Docs</a>
+      <a href="https://github.com" class="nav-link" target="_blank">GitHub</a>
+    </div>
+  </header>
+
+  <!-- ── Main ────────────────────────────────────────────────────────────── -->
+  <main>
+
+    <!-- Page header -->
+    <div class="page-header">
+      <div>
+        <div class="page-title">Model Monitoring Dashboard</div>
+        <div class="page-subtitle">Real-time drift detection using PSI + Kolmogorov-Smirnov tests</div>
+      </div>
+      <button class="refresh-btn" onclick="location.reload()">
+        &#8635; Refresh
+      </button>
+    </div>
+
+    <!-- ── KPI Cards ─────────────────────────────────────────────────────── -->
+    <div class="kpi-row" id="kpi-row">
+      <div class="kpi-card accent">
+        <div class="kpi-icon">&#128200;</div>
+        <div class="kpi-label">System Status</div>
+        <div class="kpi-value" id="kpi-status" style="font-size:1rem;color:var(--muted2)">Loading…</div>
+        <div class="kpi-sub" id="kpi-status-sub"></div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-icon">&#129302;</div>
+        <div class="kpi-label">Models Registered</div>
+        <div class="kpi-value g" id="kpi-models">—</div>
+        <div class="kpi-sub" id="kpi-latest-model">Latest: —</div>
+      </div>
+      <div class="kpi-card yellow">
+        <div class="kpi-icon">&#128200;</div>
+        <div class="kpi-label">Mean PSI Score</div>
+        <div class="kpi-value mono" id="kpi-psi" style="color:var(--muted2)">—</div>
+        <div class="kpi-sub" id="kpi-psi-sub">No detection run yet</div>
+      </div>
+      <div class="kpi-card cyan">
+        <div class="kpi-icon">&#128203;</div>
+        <div class="kpi-label">Features Affected</div>
+        <div class="kpi-value c" id="kpi-affected">—</div>
+        <div class="kpi-sub" id="kpi-severity">Severity: —</div>
+      </div>
+    </div>
+
+    <!-- ── Drift Monitor ──────────────────────────────────────────────────── -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">
+          <div class="panel-dot" id="drift-dot" style="background:var(--muted)"></div>
+          Drift Monitor
+        </div>
+        <span class="panel-hint">PSI threshold 0.2 &middot; KS &alpha; = 0.05</span>
+      </div>
+      <div class="gauge-section">
+        <!-- Gauge -->
+        <div class="gauge-panel">
+          <div class="gauge-label">PSI Gauge</div>
+          <svg class="gauge-svg" width="160" height="100" viewBox="0 0 160 100">
+            <defs>
+              <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%"   stop-color="#22c55e" />
+                <stop offset="50%"  stop-color="#f59e0b" />
+                <stop offset="100%" stop-color="#ef4444" />
+              </linearGradient>
+            </defs>
+            <!-- Track -->
+            <path d="M 15 90 A 65 65 0 0 1 145 90"
+                  fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="12"
+                  stroke-linecap="round"/>
+            <!-- Fill (animated via JS) -->
+            <path id="gauge-fill" d="M 15 90 A 65 65 0 0 1 145 90"
+                  fill="none" stroke="url(#gaugeGrad)" stroke-width="12"
+                  stroke-linecap="round"
+                  stroke-dasharray="204"
+                  stroke-dashoffset="204"
+                  style="transition: stroke-dashoffset 1s ease"/>
+            <!-- Thresholds marks -->
+            <line x1="15" y1="90" x2="15" y2="80" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+            <line x1="145" y1="90" x2="145" y2="80" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+            <!-- Value text -->
+            <text id="gauge-value" x="80" y="82" text-anchor="middle"
+                  fill="var(--text)" font-size="18" font-weight="700"
+                  font-family="'Fira Code', monospace">—</text>
+            <text id="gauge-label-text" x="80" y="98" text-anchor="middle"
+                  fill="var(--muted)" font-size="8" font-weight="600"
+                  letter-spacing="1" text-transform="uppercase">MEAN PSI</text>
+          </svg>
+          <div id="gauge-status" class="badge none">NO DATA</div>
+        </div>
+
+        <!-- Feature bars -->
+        <div class="feature-bars" id="feature-bars">
+          <div style="color:var(--muted);font-size:0.8rem;padding:0.5rem 0">
+            No drift data yet. Run <code style="background:var(--surface3);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.75rem">POST /api/detect</code> or use the Simulation panel below.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Model Registry ─────────────────────────────────────────────────── -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">
+          <div class="panel-dot" style="background:var(--accent)"></div>
+          Model Registry
+        </div>
+        <span class="panel-hint" id="registry-hint">Loading…</span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Version</th>
+              <th>Registered At</th>
+              <th>Accuracy</th>
+              <th>F1 Weighted</th>
+              <th>Samples</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="registry-tbody">
+            <tr class="empty-row"><td colspan="6">Loading registry…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Simulation Controls ────────────────────────────────────────────── -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">
+          <div class="panel-dot" style="background:var(--yellow)"></div>
+          Simulation Controls
+        </div>
+        <span class="panel-hint">Injects Gaussian noise drift into Iris-like data</span>
+      </div>
+      <div class="sim-body">
+        <div class="sim-controls">
+          <div class="sim-input-row">
+            <label for="sim-rounds">Rounds</label>
+            <input type="number" id="sim-rounds" value="5" min="1" max="20" />
+          </div>
+          <div class="sim-input-row">
+            <label for="sim-samples">Samples/round</label>
+            <input type="number" id="sim-samples" value="500" min="100" max="5000" step="100" />
+          </div>
+          <button class="btn btn-primary" id="sim-btn" onclick="runSimulation()">
+            &#9654; Run Simulation
+          </button>
+          <button class="btn btn-outline" onclick="clearLog()">Clear Log</button>
+        </div>
+        <div class="sim-log" id="sim-log"></div>
+      </div>
+    </div>
+
+    <!-- ── API Reference ──────────────────────────────────────────────────── -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">
+          <div class="panel-dot" style="background:var(--cyan)"></div>
+          REST API
+        </div>
+        <a href="/docs" style="font-size:0.72rem;color:var(--accent2);text-decoration:none;">
+          Open Swagger UI &rarr;
+        </a>
+      </div>
+      <div class="api-grid">
+        <div class="api-item">
+          <span class="method get">GET</span>
+          <div>
+            <div class="api-path">/api/status</div>
+            <div class="api-desc">System status snapshot: models, drift, info</div>
+          </div>
+        </div>
+        <div class="api-item">
+          <span class="method get">GET</span>
+          <div>
+            <div class="api-path">/api/models</div>
+            <div class="api-desc">Full model version registry</div>
+          </div>
+        </div>
+        <div class="api-item">
+          <span class="method post">POST</span>
+          <div>
+            <div class="api-path">/api/detect</div>
+            <div class="api-desc">Drift detection on custom data arrays</div>
+          </div>
+        </div>
+        <div class="api-item">
+          <span class="method post">POST</span>
+          <div>
+            <div class="api-path">/api/simulate</div>
+            <div class="api-desc">Run drift simulation; streams JSON results</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    drift-watch v1.0.0 &mdash;
+    built with <a href="https://fastapi.tiangolo.com" target="_blank">FastAPI</a>
+    &amp; <a href="https://scikit-learn.org" target="_blank">scikit-learn</a>
+    &mdash; <a href="/docs" target="_blank">OpenAPI docs</a>
+  </footer>
+
+</div>
+
+<script>
+  /* ────────────────────────────────────────────────────────────────────────
+     drift-watch dashboard — pure vanilla JS, zero dependencies
+  ──────────────────────────────────────────────────────────────────────── */
+
+  const PSI_WARN  = 0.10;
+  const PSI_DRIFT = 0.20;
+  const PSI_MAX   = 0.60;   // clamp for gauge / bars
+  const GAUGE_ARC = 204;    // arc length of the SVG semicircle
+
+  /* -- Utilities --------------------------------------------------------- */
+
+  function psiColor(psi) {
+    if (psi >= PSI_DRIFT) return 'var(--red)';
+    if (psi >= PSI_WARN)  return 'var(--yellow)';
+    return 'var(--green)';
+  }
+
+  function statusBadge(status) {
+    const map = {
+      drift:   ['DRIFT',   'drift'],
+      warning: ['WARNING', 'warning'],
+      stable:  ['STABLE',  'stable'],
+      major:   ['MAJOR',   'drift'],
+      minor:   ['MINOR',   'warning'],
+      none:    ['NONE',    'none'],
+    };
+    const [label, cls] = map[status] || ['UNKNOWN', 'none'];
+    return `<span class="badge ${cls}">${label}</span>`;
+  }
+
+  function fmt(v, decimals = 4) {
+    if (v === null || v === undefined) return '—';
+    if (typeof v === 'number') return v.toFixed(decimals);
+    return v;
+  }
+
+  function timeAgo(iso) {
+    if (!iso) return '—';
+    const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (diff < 60)   return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    return new Date(iso).toLocaleTimeString();
+  }
+
+  /* -- Gauge ------------------------------------------------------------- */
+
+  function updateGauge(psi, status) {
+    const fill = document.getElementById('gauge-fill');
+    const valEl = document.getElementById('gauge-value');
+    const statusEl = document.getElementById('gauge-status');
+    const dotEl = document.getElementById('drift-dot');
+
+    if (psi === null || psi === undefined) return;
+
+    // arc fill: 0 → full offset (hidden), PSI_MAX → 0 (full)
+    const ratio = Math.min(psi / PSI_MAX, 1.0);
+    const offset = GAUGE_ARC - ratio * GAUGE_ARC;
+    fill.setAttribute('stroke-dashoffset', offset.toFixed(1));
+
+    valEl.textContent = psi.toFixed(4);
+    valEl.setAttribute('fill', psiColor(psi));
+
+    const sMap = { none: ['NO DRIFT', 'none', 'var(--green)'],
+                   minor: ['MINOR', 'warning', 'var(--yellow)'],
+                   major: ['MAJOR DRIFT', 'drift', 'var(--red)'] };
+    const [label, cls, dotColor] = sMap[status] || ['UNKNOWN', 'none', 'var(--muted)'];
+    statusEl.className = `badge ${cls}`;
+    statusEl.textContent = label;
+    dotEl.style.background = dotColor;
+  }
+
+  /* -- Feature bars ------------------------------------------------------ */
+
+  function renderFeatureBars(featureDetails) {
+    const container = document.getElementById('feature-bars');
+    if (!featureDetails || featureDetails.length === 0) {
+      container.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:0.5rem 0">No feature drift data available.</div>';
+      return;
+    }
+
+    const html = featureDetails.map(f => {
+      const psi = f.psi || 0;
+      const pct = Math.min(psi / PSI_MAX * 100, 100).toFixed(1);
+      const color = psiColor(psi);
+      return `
+        <div class="feature-bar-row">
+          <div class="feature-bar-name dim">${f.feature}</div>
+          <div class="feature-bar-track">
+            <div class="feature-bar-fill" style="width:${pct}%;background:${color}"></div>
+          </div>
+          <div class="feature-bar-psi" style="color:${color}">${fmt(psi)}</div>
+          ${statusBadge(f.status)}
+        </div>`;
+    }).join('');
+
+    container.innerHTML = html;
+  }
+
+  /* -- KPI cards --------------------------------------------------------- */
+
+  function updateKPIs(data) {
+    const drift = data.latest_drift;
+    const models = data.models || [];
+
+    // Status
+    const statusEl = document.getElementById('kpi-status');
+    const statusSubEl = document.getElementById('kpi-status-sub');
+    if (drift) {
+      if (drift.drifted) {
+        statusEl.textContent = 'DRIFT DETECTED';
+        statusEl.style.color = 'var(--red)';
+        statusSubEl.textContent = `${drift.affected_features?.length || 0} feature(s) affected`;
+      } else {
+        statusEl.textContent = 'ALL STABLE';
+        statusEl.style.color = 'var(--green)';
+        statusSubEl.textContent = 'No drift detected';
+      }
+    } else {
+      statusEl.textContent = 'AWAITING DATA';
+      statusEl.style.color = 'var(--muted2)';
+      statusSubEl.textContent = 'Run simulation or POST /api/detect';
+    }
+
+    // Models
+    document.getElementById('kpi-models').textContent = models.length || '0';
+    const latest = models[0];
+    document.getElementById('kpi-latest-model').textContent =
+      latest ? `Latest: v${latest.version}` : 'No models yet';
+
+    // PSI
+    const psiEl = document.getElementById('kpi-psi');
+    const psiSubEl = document.getElementById('kpi-psi-sub');
+    if (drift && drift.psi_score !== undefined) {
+      psiEl.textContent = fmt(drift.psi_score);
+      psiEl.style.color = psiColor(drift.psi_score);
+      psiSubEl.textContent = drift.drifted ? 'Above threshold (0.2)' : 'Below threshold (0.2)';
+    } else {
+      psiEl.textContent = '—';
+      psiEl.style.color = 'var(--muted2)';
+      psiSubEl.textContent = 'No detection run yet';
+    }
+
+    // Affected features
+    const affEl = document.getElementById('kpi-affected');
+    const sevEl = document.getElementById('kpi-severity');
+    if (drift) {
+      affEl.textContent = `${drift.affected_features?.length || 0} / ${drift.feature_details?.length || 0}`;
+      affEl.style.color = drift.drifted ? 'var(--red)' : 'var(--cyan)';
+      sevEl.textContent = `Severity: ${drift.severity || 'none'}`;
+    } else {
+      affEl.textContent = '—';
+      sevEl.textContent = 'Severity: —';
+    }
+  }
+
+  /* -- Registry table ---------------------------------------------------- */
+
+  function renderRegistry(models) {
+    const tbody = document.getElementById('registry-tbody');
+    const hint = document.getElementById('registry-hint');
+
+    hint.textContent = `${models.length} model${models.length !== 1 ? 's' : ''} registered`;
+
+    if (!models.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No models registered yet. Run: python src/train.py</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = models.map((m, i) => {
+      const met = m.metrics || {};
+      const isLatest = i === 0;
+      const acc = typeof met.accuracy === 'number' ? met.accuracy.toFixed(4) : '—';
+      const f1  = typeof met.f1_weighted === 'number' ? met.f1_weighted.toFixed(4) : '—';
+      const n   = met.n_train || met.n_samples || '—';
+      return `<tr>
+        <td><span class="version-badge">v${m.version}</span>${isLatest ? '<span class="latest-tag">LATEST</span>' : ''}</td>
+        <td class="mono dim">${(m.registered_at || '').slice(0, 19)}</td>
+        <td class="mono g fw6">${acc}</td>
+        <td class="mono">${f1}</td>
+        <td class="mono dim">${n}</td>
+        <td>${statusBadge(m.status === 'active' ? 'stable' : m.status)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  /* -- Main data load ---------------------------------------------------- */
+
+  async function loadStatus() {
+    try {
+      const res = await fetch('/api/status');
+      if (!res.ok) return;
+      const data = await res.json();
+
+      updateKPIs(data);
+      renderRegistry(data.models || []);
+
+      if (data.latest_drift) {
+        const d = data.latest_drift;
+        updateGauge(d.psi_score, d.severity);
+        renderFeatureBars(d.feature_details || []);
+      }
+    } catch (e) {
+      console.warn('[drift-watch] Failed to load status:', e);
+    }
+  }
+
+  /* -- Simulation -------------------------------------------------------- */
+
+  function logLine(text, cls = 'info') {
+    const log = document.getElementById('sim-log');
+    log.classList.add('visible');
+    const line = document.createElement('div');
+    line.className = `log-line ${cls}`;
+    line.textContent = text;
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function clearLog() {
+    const log = document.getElementById('sim-log');
+    log.innerHTML = '';
+    log.classList.remove('visible');
+  }
+
+  async function runSimulation() {
+    const btn = document.getElementById('sim-btn');
+    const rounds = parseInt(document.getElementById('sim-rounds').value) || 5;
+    const samples = parseInt(document.getElementById('sim-samples').value) || 500;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Running…';
+    clearLog();
+    logLine(`Starting simulation: ${rounds} rounds, ${samples} samples/round`, 'info');
+
+    try {
+      const res = await fetch('/api/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ n_rounds: rounds, samples_per_round: samples }),
+      });
+
+      if (!res.ok) {
+        logLine(`Error: ${res.status} ${res.statusText}`, 'drift');
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const ev = JSON.parse(line);
+            if (ev.event === 'start') {
+              logLine(`Simulation started — ${ev.n_rounds} rounds`, 'info');
+            } else if (ev.event === 'round') {
+              const cls = ev.drifted ? 'drift' : 'stable';
+              const icon = ev.drifted ? '[DRIFT]' : '[STABLE]';
+              logLine(
+                `Round ${String(ev.round).padStart(2)} | severity=${ev.severity.toFixed(3)} | ` +
+                `PSI=${ev.psi_score.toFixed(4)} | KS=${ev.ks_pvalue.toFixed(4)} | ${icon}`,
+                cls
+              );
+              // Update gauge live
+              updateGauge(ev.psi_score, ev.severity_label);
+            } else if (ev.event === 'done') {
+              logLine(`Simulation complete — ${ev.n_drifted}/${ev.n_rounds} rounds drifted.`, 'done');
+              // Reload status to update all panels
+              await loadStatus();
+            }
+          } catch (_) { /* non-JSON line, skip */ }
+        }
+      }
+    } catch (e) {
+      logLine(`Network error: ${e.message}`, 'drift');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '&#9654; Run Simulation';
+    }
+  }
+
+  /* -- Boot -------------------------------------------------------------- */
+
+  loadStatus();
+
+  // Auto-refresh every 30 seconds
+  setInterval(loadStatus, 30_000);
+</script>
+</body>
+</html>
